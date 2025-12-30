@@ -282,7 +282,7 @@ with st.spinner("Fetching customers from HubSpot..."):
                     ["---", "View", "Update", "Delete"],
                     key=f"action_{idx}_{row['ID']}",
                     label_visibility="collapsed",
-                    options.index("View")
+                    index=options.index("View")
                 )
                 
                 if action == "View":
