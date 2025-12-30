@@ -2,8 +2,8 @@ requests==2.31.0
 python-dotenv==1.0.0
 
 # --- Core API ---
-fastapi
-uvicorn[standard]
+# fastapi
+# uvicorn[standard]
 
 # --- Async & HTTP ---
 httpx
@@ -34,8 +34,8 @@ email-validator
 structlog
 
 # --- Testing ---
-pytest
-pytest-asyncio
+# pytest
+# pytest-asyncio
 
 #--- Frontend ---
 streamlit
@@ -48,7 +48,7 @@ hubspot-api-client
 squareup
 requests
 pandas
-streamlit
+# streamlit
 
 streamlit_chat
 # transformers
