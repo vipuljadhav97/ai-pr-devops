@@ -3,6 +3,7 @@ import pymysql
 from pymysql.cursors import DictCursor
 from datetime import datetime
 from dotenv import load_dotenv
+import requests
 
 load_dotenv()
 
@@ -13,9 +14,13 @@ MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 MYSQL_USER = os.getenv("MYSQL_USER", "")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 
-# Log file path
-LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+# HubSpot credentials
+HUBSPOT_TOKEN = os.getenv("HUBSPOT_TOKEN", "")
+
+# Log file paths
+LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
 DB_ERROR_LOG = os.path.join(LOG_DIR, "db_error.txt")
+HUBSPOT_ERROR_LOG = os.path.join(LOG_DIR, "hubspot-api-error.txt")
 
 # Ensure log directory exists
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -31,6 +36,18 @@ def log_error(error_message: str, context: str = "Database Operation"):
             log_file.write("-" * 60 + "\n")
     except Exception as e:
         print(f"Failed to log error: {e}")
+
+
+def log_hubspot_error(error_message: str, context: str = "HubSpot API"):
+    """Log error to hubspot-api-error.txt file"""
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(HUBSPOT_ERROR_LOG, "a") as log_file:
+            log_file.write(f"\n[{timestamp}] {context}\n")
+            log_file.write(f"Error: {error_message}\n")
+            log_file.write("-" * 60 + "\n")
+    except Exception as e:
+        print(f"Failed to log HubSpot error: {e}")
 
 
 def get_db_connection():
@@ -212,3 +229,33 @@ def sync_customers_to_db(customers_df):
         log_error(error_msg, "Customer Sync Operation")
         conn.close()
         return {"new": 0, "skipped": 0, "deleted": 0, "errors": 1}
+
+
+def check_hubspot_api_status():
+    """Check if HubSpot API is connected and working. Returns (status, error_msg)"""
+    
+    if not HUBSPOT_TOKEN:
+        error_msg = "HubSpot API token not configured in .env"
+        return False, error_msg
+    
+    try:
+        url = "https://api.hubapi.com/crm/v3/objects/contacts?limit=1"
+        headers = {"Authorization": f"Bearer {HUBSPOT_TOKEN}"}
+        
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        
+        return True, None
+        
+    except requests.exceptions.Timeout:
+        error_msg = "HubSpot API timeout - connection too slow"
+        log_hubspot_error(error_msg, "API Connection Timeout")
+        return False, error_msg
+    except requests.exceptions.HTTPError as e:
+        error_msg = f"HubSpot API HTTP Error {response.status_code}: {response.text}"
+        log_hubspot_error(error_msg, "API HTTP Error")
+        return False, error_msg
+    except Exception as e:
+        error_msg = f"HubSpot API connection error: {str(e)}"
+        log_hubspot_error(error_msg, "API Connection Error")
+        return False, error_msg
