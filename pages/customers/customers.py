@@ -279,7 +279,7 @@ with st.spinner("Fetching customers from HubSpot..."):
         with col4:
             st.markdown("**Name**")
         with col5:
-            st.markdown("<center>**Ac</center>", unsafe_allow_html=True)
+            st.markdown("<center>Actions</center>", unsafe_allow_html=True)
 
         st.divider()
 
