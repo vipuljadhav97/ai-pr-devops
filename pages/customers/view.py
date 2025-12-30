@@ -309,7 +309,9 @@ with st.spinner("Fetching customers from HubSpot..."):
                     "action",
                     ["---", "View", "Update", "Delete"],
                     key=f"action_{idx}_{row['ID']}",
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    on_change=handle_action_change,
+                    args=(widget_key, row['ID'])
                 )
                 
                 if action == "View":
