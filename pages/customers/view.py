@@ -9,10 +9,12 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 from utils.db_service import (
     check_database_status, 
+    check_hubspot_api_status,
     init_db, 
     sync_customers_to_db,
     get_db_connection,
-    log_error
+    log_error,
+    log_hubspot_error
 )
 
 load_dotenv()  # Load variables from .env file
@@ -32,14 +34,13 @@ def fetch_customers():
     headers = {"Authorization": f"Bearer {hubspot_token}"}
 
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
 
         # Extract contacts
         contacts = data.get("results", [])
         if not contacts:
-            st.warning("No customers found.")
             return None
 
         # Parse contact data
@@ -57,11 +58,20 @@ def fetch_customers():
 
         return pd.DataFrame(customers)
 
+    except requests.exceptions.Timeout:
+        error_msg = "HubSpot API timeout - request took too long"
+        log_hubspot_error(error_msg, "Fetch Customers Timeout")
+        st.error(f"API Error: {error_msg}")
+        return None
     except requests.exceptions.HTTPError as e:
-        st.error(f"API Error: {response.status_code} - {response.text}")
+        error_msg = f"API HTTP Error {response.status_code}: {response.text}"
+        log_hubspot_error(error_msg, "Fetch Customers HTTP Error")
+        st.error(f"API Error: {error_msg}")
         return None
     except Exception as e:
-        st.error(f"Error fetching customers: {str(e)}")
+        error_msg = f"Error fetching customers: {str(e)}"
+        log_hubspot_error(error_msg, "Fetch Customers Exception")
+        st.error(f"API Error: {error_msg}")
         return None
 
 
@@ -243,8 +253,6 @@ if not db_status:
 with st.spinner("Fetching customers from HubSpot..."):
     df = fetch_customers()
     if df is not None:
-        st.success(f"✅ Found {len(df)} customers from HubSpot")
-        
         # Sync to database
         if db_status:
             with st.spinner("Syncing to database..."):
