@@ -228,7 +228,7 @@ def delete_customer_dialog(customer):
     st.markdown("### Customer Information")
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown(f"**ID:** {customer['ID']}")
+        st.markdown("<center>This is centered quickly</center>", unsafe_allow_html=True{customer['ID']}")
         st.markdown(f"**Email:** {customer['Email']}")
         st.markdown(f"**First Name:** {customer['First Name']}")
 
