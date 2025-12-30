@@ -246,9 +246,11 @@ with st.spinner("Fetching customers from HubSpot..."):
         st.success(f"✅ Found {len(df)} customers from HubSpot")
         
         # Sync to database
-        if MYSQL_DATABASE and MYSQL_USER:
+        if db_status:
             with st.spinner("Syncing to database..."):
                 sync_result = sync_customers_to_db(df)
+                if sync_result["errors"] > 0:
+                    st.warning(f"⚠️ {sync_result['errors']} sync errors occurred. Check logs for details.")
                 if sync_result["new"] > 0 or sync_result["skipped"] > 0 or sync_result["deleted"] > 0:
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:

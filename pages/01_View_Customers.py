@@ -3,8 +3,17 @@ import os
 import streamlit as st
 import pandas as pd
 from dotenv import load_dotenv
-import pymysql
-from pymysql.cursors import DictCursor
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(__file__) + '/..')
+from utils.db_service import (
+    check_database_status, 
+    init_db, 
+    sync_customers_to_db,
+    get_db_connection,
+    log_error
+)
 
 load_dotenv()  # Load variables from .env file
 
@@ -12,13 +21,6 @@ st.set_page_config(page_title="View Customers", layout="wide")
 st.title("👥 View Customers")
 
 hubspot_token = os.getenv("HUBSPOT_TOKEN")
-
-# DB credentials
-MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
-MYSQL_USER = os.getenv("MYSQL_USER", "")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 
 # Initialize session state
 if "show_view_dialog" not in st.session_state:
