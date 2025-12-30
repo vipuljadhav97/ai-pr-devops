@@ -22,157 +22,12 @@ st.title("👥 View Customers")
 
 hubspot_token = os.getenv("HUBSPOT_TOKEN")
 
-# Initialize session state
-if "show_view_dialog" not in st.session_state:
-    st.session_state.show_view_dialog = False
-if "view_customer_data" not in st.session_state:
-    st.session_state.view_customer_data = None
-if "customers_df" not in st.session_state:
-    st.session_state.customers_df = None
-
 if not hubspot_token:
     st.error("Missing HUBSPOT_TOKEN in .env file")
     st.stop()
 
 
-def get_db_connection():
-    """Get MySQL database connection."""
-    try:
-        conn = pymysql.connect(
-            host=MYSQL_HOST,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            database=MYSQL_DATABASE,
-            port=MYSQL_PORT,
-            cursorclass=DictCursor
-        )
-        return conn
-    except Exception as e:
-        st.error(f"Database connection error: {e}")
-        return None
-
-
-def init_db():
-    """Initialize database and create customers table if not exists."""
-    conn = get_db_connection()
-    if not conn:
-        return False
-    
-    try:
-        with conn.cursor() as cursor:
-            # Create customers table with unique constraint on hubspot_id
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS customer_entity (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    hubspot_id VARCHAR(255) NOT NULL UNIQUE,
-                    email VARCHAR(255),
-                    firstname VARCHAR(255),
-                    lastname VARCHAR(255),
-                    phone VARCHAR(100),
-                    company VARCHAR(255),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX idx_hubspot_id (hubspot_id),
-                    INDEX idx_email (email)
-                )
-            """)
-            conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        st.error(f"Database initialization error: {e}")
-        conn.close()
-        return False
-
-
-def sync_customers_to_db(customers_df):
-    """Sync customers from HubSpot to database. Only insert new records and remove deleted ones."""
-    if customers_df is None or len(customers_df) == 0:
-        return {"new": 0, "skipped": 0, "deleted": 0, "errors": 0}
-    
-    conn = get_db_connection()
-    if not conn:
-        return {"new": 0, "skipped": 0, "deleted": 0, "errors": 1}
-    
-    new_count = 0
-    skipped_count = 0
-    deleted_count = 0
-    error_count = 0
-    
-    try:
-        with conn.cursor() as cursor:
-            # Get all existing hubspot_ids from database
-            cursor.execute("SELECT hubspot_id FROM customer_entity")
-            db_records = cursor.fetchall()
-            db_hubspot_ids = set(str(record['hubspot_id']) for record in db_records)
-            
-            # Get all hubspot_ids from API response
-            api_hubspot_ids = set(str(row['ID']) for _, row in customers_df.iterrows())
-            
-            # Find records to delete (in DB but not in API response)
-            ids_to_delete = db_hubspot_ids - api_hubspot_ids
-            
-            # Delete records that are no longer in HubSpot
-            if ids_to_delete:
-                for hubspot_id in ids_to_delete:
-                    try:
-                        cursor.execute(
-                            "DELETE FROM customer_entity WHERE hubspot_id = %s",
-                            (hubspot_id,)
-                        )
-                        deleted_count += 1
-                    except Exception as e:
-                        error_count += 1
-                        print(f"Error deleting customer {hubspot_id}: {e}")
-            
-            # Insert or skip existing records
-            for _, row in customers_df.iterrows():
-                try:
-                    # Check if customer already exists
-                    cursor.execute(
-                        "SELECT hubspot_id FROM customer_entity WHERE hubspot_id = %s",
-                        (str(row['ID']),)
-                    )
-                    existing = cursor.fetchone()
-                    
-                    if existing:
-                        skipped_count += 1
-                        continue
-                    
-                    # Insert new customer
-                    cursor.execute("""
-                        INSERT INTO customer_entity 
-                        (hubspot_id, email, firstname, lastname, phone, company)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                    """, (
-                        str(row['ID']),
-                        row.get('Email', 'N/A'),
-                        row.get('First Name', 'N/A'),
-                        row.get('Last Name', 'N/A'),
-                        row.get('Phone', 'N/A'),
-                        row.get('Company', 'N/A')
-                    ))
-                    new_count += 1
-                    
-                except pymysql.IntegrityError:
-                    # Duplicate key - skip
-                    skipped_count += 1
-                except Exception as e:
-                    error_count += 1
-                    print(f"Error inserting customer {row.get('ID')}: {e}")
-            
-            conn.commit()
-        conn.close()
-        
-        return {"new": new_count, "skipped": skipped_count, "deleted": deleted_count, "errors": error_count}
-    
-    except Exception as e:
-        st.error(f"Database sync error: {e}")
-        conn.close()
-        return {"new": 0, "skipped": 0, "deleted": 0, "errors": 1}
-
-
-def fetch_customers():
+def update_customer(contact_id: str, email: str = None, firstname: str = None, lastname: str = None, phone: str = None, company: str = None):
     """Fetch customers from HubSpot API."""
     url = "https://api.hubapi.com/crm/v3/objects/contacts?limit=100"
     headers = {"Authorization": f"Bearer {hubspot_token}"}
@@ -373,12 +228,18 @@ def delete_customer_dialog(customer):
 # Fetch and display customers automatically
 st.subheader("📋 Customers List")
 
-# Initialize database
-if MYSQL_DATABASE and MYSQL_USER:
-    if init_db():
-        st.success("✅ Database connected and initialized")
+# Check and initialize database
+db_status, db_error = check_database_status()
+
+if not db_status:
+    if db_error:
+        st.warning(f"⚠️ Database Status: {db_error}")
+        st.info("Attempting to initialize database...")
+        success, init_error = init_db()
+        if not success and init_error:
+            st.error(f"Database initialization failed: {init_error}")
     else:
-        st.warning("⚠️ Database initialization failed - running without DB sync")
+        st.error("Database is not available")
 
 with st.spinner("Fetching customers from HubSpot..."):
     df = fetch_customers()
@@ -386,9 +247,11 @@ with st.spinner("Fetching customers from HubSpot..."):
         st.success(f"✅ Found {len(df)} customers from HubSpot")
         
         # Sync to database
-        if MYSQL_DATABASE and MYSQL_USER:
+        if db_status:
             with st.spinner("Syncing to database..."):
                 sync_result = sync_customers_to_db(df)
+                if sync_result["errors"] > 0:
+                    st.warning(f"⚠️ {sync_result['errors']} sync errors occurred. Check logs for details.")
                 if sync_result["new"] > 0 or sync_result["skipped"] > 0 or sync_result["deleted"] > 0:
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
