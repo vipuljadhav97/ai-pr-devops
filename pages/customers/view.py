@@ -274,11 +274,11 @@ with st.spinner("Fetching customers from HubSpot..."):
         st.session_state["show_dialog_for"] = row_id
         # st.toast(f"Viewing ID: {row_id}") # Optional feedback
         
-    elif selection == "Update":
+        elif selection == "Update":
         st.write(f"Update logic for {row_id}")
 
-    # RESET: Set the selectbox value back to default immediately
-    st.session_state[key] = "---"
+        # RESET: Set the selectbox value back to default immediately
+        st.session_state[key] = "---"
 
 # 2. Example Data
 row = {'ID': 101, 'Name': 'Alice'}
