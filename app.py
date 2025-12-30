@@ -32,7 +32,7 @@ with st.sidebar:
 home_page = st.Page("pages/home.py", title="Home", icon="🏠")
 
 # Customers section pages
-view_customers_page = st.Page("pages/customers/view.py", title="View Customers", icon="👥")
+view_customers_page = st.Page("pages/customers/customers.py", title="View Customers", icon="👥")
 
 # Configure navigation with sections
 pages = {
