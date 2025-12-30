@@ -260,15 +260,13 @@ with st.spinner("Fetching customers from HubSpot..."):
             st.markdown("**Name**")
         with col5:
             st.markdown("**Company**")
-        with col6:
-            st.markdown("**Actions**")
-        
-    st.divider()
-
+    with col6:
+        st.markdown("**Actions**")
     
-        
-        # Display each customer row with action buttons
-        for idx, row in df.iterrows():
+    st.divider()
+    
+    # Display each customer row with action buttons
+    for idx, row in df.iterrows():
             col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 2, 2, 2, 2])
             
             with col1:
@@ -302,7 +300,7 @@ with st.spinner("Fetching customers from HubSpot..."):
                 # 3. Create the Selectbox
                 # We must use a unique key for the widget
                     widget_key = f"action_{idx}_{row['ID']}"
-                
+
                 # Initialize the key in session state if it doesn't exist
                     if widget_key not in st.session_state:
                         st.session_state[widget_key] = "---"
