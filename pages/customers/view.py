@@ -299,16 +299,16 @@ with st.spinner("Fetching customers from HubSpot..."):
 
                 # 3. Create the Selectbox
                 # We must use a unique key for the widget
-                    widget_key = f"action_{idx}_{row['ID']}"
+                widget_key = f"action_{idx}_{row['ID']}"
 
                 # Initialize the key in session state if it doesn't exist
-                    if widget_key not in st.session_state:
-                        st.session_state[widget_key] = "---"
+                if widget_key not in st.session_state:
+                    st.session_state[widget_key] = "---"
                 # Use a hidden selectbox approach
                 action = st.selectbox(
                     "action",
                     ["---", "View", "Update", "Delete"],
-                    key=f"action_{idx}_{row['ID']}",
+                    key=widget_key,
                     label_visibility="collapsed",
                     on_change=handle_action_change,
                     args=(widget_key, row['ID'])
