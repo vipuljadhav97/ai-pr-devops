@@ -13,6 +13,7 @@ import json
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -42,8 +43,7 @@ def generate_commit_message_with_llm(changed_files, diff_content):
     
     if not api_key:
         print("⚠️  OPENROUTER_API_KEY not found in environment. Using default message.")
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        return f"Auto-commit: Updated files at {timestamp}"
+        return "update-files"
     
     # Prepare the prompt
     file_list = "\n".join([f"- {f}" for f in changed_files])
@@ -61,12 +61,15 @@ Diff summary:
 
 Requirements:
 - Use conventional commit format (e.g., feat:, fix:, docs:, refactor:, style:, test:, chore:)
-- Keep it under 72 characters
+- Keep it under 50 characters total (including the type)
 - Be specific but concise
 - Focus on WHAT changed and WHY, not HOW
 - Use imperative mood (e.g., "Add feature" not "Added feature")
+- Use only lowercase letters, numbers, and hyphens
+- Replace spaces with hyphens
+- No special characters
 
-Generate ONLY the commit message, nothing else."""
+Generate ONLY the commit message, nothing else. Example: feat: update configuration or fix: resolve parsing bug"""
 
     try:
         response = requests.post(
@@ -96,17 +99,25 @@ Generate ONLY the commit message, nothing else."""
             commit_message = result['choices'][0]['message']['content'].strip()
             # Remove any quotes or extra formatting
             commit_message = commit_message.strip('"\'')
+            # Slugify: lowercase, replace spaces and special chars with hyphens
+            commit_message = re.sub(r'[^a-z0-9\-:]+', '-', commit_message.lower())
+            commit_message = re.sub(r'-+', '-', commit_message)  # Remove multiple hyphens
+            commit_message = commit_message.strip('-')  # Remove leading/trailing hyphens
             print(f"🤖 LLM-generated commit message: {commit_message}")
             return commit_message
         else:
             print(f"⚠️  OpenRouter API error ({response.status_code}): {response.text}")
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            return f"Auto-commit: Updated files at {timestamp}"
+            return "update-files"
             
     except Exception as e:
         print(f"⚠️  Error calling OpenRouter API: {e}")
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        return f"Auto-commit: Updated files at {timestamp}"
+        return "update-files"
+
+
+def format_commit_id(commit_number, message):
+    """Format commit message with incrementing ID"""
+    # Format: {number:03d}-{message}
+    return f"{commit_number:03d}-{message}"
 
 
 def get_git_details():
@@ -219,7 +230,17 @@ def check_for_changes_and_commit(watch_path):
         
         # Use LLM to generate commit message
         print("\n🤖 Generating intelligent commit message...")
-        commit_msg = generate_commit_message_with_llm(file_list, full_diff)
+        base_message = generate_commit_message_with_llm(file_list, full_diff)
+        
+        # Get current commit count and increment for next commit ID
+        commit_count = run_git_command("git rev-list --count HEAD")
+        try:
+            next_commit_id = int(commit_count) + 1
+        except ValueError:
+            next_commit_id = 1
+        
+        # Format commit message with ID
+        commit_msg = format_commit_id(next_commit_id, base_message)
         
         # Commit
         print(f"\n💾 Committing: {commit_msg}")
