@@ -282,6 +282,30 @@ with st.spinner("Fetching customers from HubSpot..."):
             with col5:
                 st.write(row["Company"])
             with col6:
+                def handle_action_change(key, row_id):
+                    # Get the value the user just selected
+                    selection = st.session_state[key]
+
+                    if selection == "View":
+                    # Trigger your logic here (e.g., save ID to open a dialog later)
+                        st.session_state["show_dialog_for"] = row_id
+                    # st.toast(f"Viewing ID: {row_id}") # Optional feedback
+
+                    elif selection == "Update":
+                        st.write(f"Update logic for {row_id}")
+
+                    # RESET: Set the selectbox value back to default immediately
+                    st.session_state[key] = "---"
+
+
+
+                # 3. Create the Selectbox
+                # We must use a unique key for the widget
+                    widget_key = f"action_{idx}_{row['ID']}"
+                
+                # Initialize the key in session state if it doesn't exist
+                    if widget_key not in st.session_state:
+                        st.session_state[widget_key] = "---"
                 # Use a hidden selectbox approach
                 action = st.selectbox(
                     "action",
