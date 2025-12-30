@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Git Details Retriever and Auto-Commit/Push
-Retrieves git information and monitors for file changes to auto-commit and push
+Checks for git changes every 30 seconds and auto-commits/pushes
 Uses OpenRouter LLM to generate intelligent commit messages
 """
 
@@ -12,8 +12,10 @@ import time
 import json
 import requests
 from datetime import datetime
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def run_git_command(command):
@@ -179,138 +181,103 @@ def get_git_details():
     print("\n" + "=" * 60)
 
 
-class GitAutoCommitHandler(FileSystemEventHandler):
-    """Handler for file system events that auto-commits and pushes changes"""
-    
-    def __init__(self, watch_path):
-        self.watch_path = watch_path
-        self.last_commit_time = 0
-        self.debounce_seconds = 5  # Wait 5 seconds before committing
-        self.pending_changes = False
+def check_for_changes_and_commit(watch_path):
+    """Check for git changes and commit/push if any exist"""
+    try:
+        # Change to the watch directory
+        original_dir = os.getcwd()
+        os.chdir(watch_path)
         
-    def on_modified(self, event):
-        if event.is_directory:
-            return
+        # Check for changes
+        status = run_git_command("git status --porcelain")
         
-        # Ignore git internal files and this script itself
-        if '.git' in event.src_path or event.src_path.endswith('git_details.py'):
-            return
-            
-        print(f"\n📝 File changed: {event.src_path}")
-        self.pending_changes = True
-        self.schedule_commit()
-    
-    def on_created(self, event):
-        if event.is_directory:
-            return
-            
-        if '.git' in event.src_path or event.src_path.endswith('git_details.py'):
-            return
-            
-        print(f"\n➕ File created: {event.src_path}")
-        self.pending_changes = True
-        self.schedule_commit()
-    
-    def on_deleted(self, event):
-        if event.is_directory:
-            return
-            
-        if '.git' in event.src_path or event.src_path.endswith('git_details.py'):
-            return
-            
-        print(f"\n🗑️  File deleted: {event.src_path}")
-        self.pending_changes = True
-        self.schedule_commit()
-    
-    def schedule_commit(self):
-        """Schedule a commit after debounce period"""
-        self.last_commit_time = time.time()
+        if not status:
+            print("✓ No changes detected", end="\r")
+            os.chdir(original_dir)
+            return False
         
-    def check_and_commit(self):
-        """Check if it's time to commit and push"""
-        if not self.pending_changes:
-            return
-            
-        if time.time() - self.last_commit_time < self.debounce_seconds:
-            return
+        print("\n" + "🔄 " * 30)
+        print("CHANGES DETECTED - AUTO-COMMITTING")
+        print("🔄 " * 30)
         
-        self.pending_changes = False
-        self.auto_commit_and_push()
-    
-    def auto_commit_and_push(self):
-        """Automatically commit and push changes"""
-        try:
-            # Check for changes
-            status = run_git_command("git status --porcelain")
-            if not status:
-                print("ℹ️  No changes to commit")
-                return
-            
-            print("\n" + "🔄 " * 30)
-            print("AUTO-COMMITTING CHANGES")
-            print("🔄 " * 30)
-            
-            # Add all changes
-            print("\n📦 Staging changes...")
-            run_git_command("git add .")
-            
-            # Get list of changed files
-            changed_files = run_git_command("git diff --cached --name-only")
-            file_list = changed_files.split('\n') if changed_files else []
-            
-            # Get diff for context
-            diff_content = run_git_command("git diff --cached --stat")
-            full_diff = run_git_command("git diff --cached")
-            
-            # Use LLM to generate commit message
-            print("\n🤖 Generating intelligent commit message...")
-            commit_msg = generate_commit_message_with_llm(file_list, full_diff)
-            
-            # Commit
-            print(f"\n💾 Committing: {commit_msg}")
-            commit_result = run_git_command(f'git commit -m "{commit_msg}"')
-            print(commit_result)
-            
-            # Push to remote
-            print("\n🚀 Pushing to remote repository...")
-            push_result = run_git_command("git push")
-            
-            if "Error" not in push_result:
-                print("✅ Successfully pushed to remote!")
+        # Add all changes
+        print("\n📦 Staging changes...")
+        run_git_command("git add .")
+        
+        # Get list of changed files
+        changed_files = run_git_command("git diff --cached --name-only")
+        file_list = changed_files.split('\n') if changed_files else []
+        
+        print(f"📝 Changed files: {len(file_list)}")
+        for file in file_list[:5]:  # Show first 5 files
+            print(f"   - {file}")
+        if len(file_list) > 5:
+            print(f"   ... and {len(file_list) - 5} more")
+        
+        # Get diff for context
+        full_diff = run_git_command("git diff --cached")
+        
+        # Use LLM to generate commit message
+        print("\n🤖 Generating intelligent commit message...")
+        commit_msg = generate_commit_message_with_llm(file_list, full_diff)
+        
+        # Commit
+        print(f"\n💾 Committing: {commit_msg}")
+        commit_result = run_git_command(f'git commit -m "{commit_msg}"')
+        print(commit_result)
+        
+        # Push to remote
+        print("\n🚀 Pushing to remote repository...")
+        push_result = run_git_command("git push")
+        
+        if "Error" not in push_result:
+            print("✅ Successfully pushed to remote!")
+            if push_result:
                 print(push_result)
-            else:
-                print(f"❌ Push failed: {push_result}")
-            
-            print("\n" + "🔄 " * 30)
-            
-        except Exception as e:
-            print(f"❌ Error during auto-commit: {e}")
+        else:
+            print(f"❌ Push failed: {push_result}")
+        
+        print("\n" + "🔄 " * 30)
+        
+        os.chdir(original_dir)
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ Error during auto-commit: {e}")
+        os.chdir(original_dir)
+        return False
 
 
-def start_auto_commit_watch(watch_path):
-    """Start watching directory for changes and auto-commit"""
+def start_auto_commit_watch(watch_path, check_interval=30):
+    """Periodically check for changes and auto-commit/push"""
     print("\n" + "👁️ " * 30)
     print("STARTING AUTO-COMMIT MODE")
     print("👁️ " * 30)
     print(f"\nWatching directory: {watch_path}")
-    print("Monitoring for file changes...")
+    print(f"Checking for changes every {check_interval} seconds...")
     print("\n⚠️  Press Ctrl+C to stop watching\n")
     
-    event_handler = GitAutoCommitHandler(watch_path)
-    observer = Observer()
-    observer.schedule(event_handler, watch_path, recursive=True)
-    observer.start()
+    check_count = 0
     
     try:
         while True:
-            time.sleep(1)
-            event_handler.check_and_commit()
+            check_count += 1
+            current_time = datetime.now().strftime("%H:%M:%S")
+            print(f"[{current_time}] Check #{check_count}: ", end="", flush=True)
+            
+            changed = check_for_changes_and_commit(watch_path)
+            
+            if not changed:
+                # Sleep for the check interval
+                time.sleep(check_interval)
+            else:
+                # If we just committed, wait a bit before next check
+                print(f"\n⏳ Waiting {check_interval} seconds before next check...")
+                time.sleep(check_interval)
+                
     except KeyboardInterrupt:
         print("\n\n🛑 Stopping auto-commit watch...")
-        observer.stop()
-    
-    observer.join()
-    print("✅ Auto-commit watch stopped")
+        print("✅ Auto-commit watch stopped")
 
 
 if __name__ == "__main__":
@@ -320,7 +287,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--watch",
         action="store_true",
-        help="Enable auto-commit mode to watch for file changes"
+        help="Enable auto-commit mode to periodically check for file changes"
     )
     parser.add_argument(
         "--path",
@@ -328,13 +295,20 @@ if __name__ == "__main__":
         default=None,
         help="Path to watch (defaults to current directory)"
     )
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Check interval in seconds (default: 30)"
+    )
     
     args = parser.parse_args()
     
     try:
         if args.watch:
             watch_path = args.path or os.path.dirname(os.path.abspath(__file__))
-            start_auto_commit_watch(watch_path)
+            watch_path = os.path.abspath(watch_path)
+            start_auto_commit_watch(watch_path, args.interval)
         else:
             get_git_details()
     except Exception as e:
