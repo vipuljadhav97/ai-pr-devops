@@ -78,7 +78,7 @@ Generate ONLY the commit message, nothing else."""
                 "X-Title": "Git Auto-Commit Tool"
             },
             json={
-                "model": "google/gemma-2-9b-it:free",
+                "model": "google/gemma-3-27b-it:free",
                 "messages": [
                     {
                         "role": "user",
