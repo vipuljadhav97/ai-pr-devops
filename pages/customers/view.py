@@ -26,7 +26,7 @@ if not hubspot_token:
     st.stop()
 
 
-def update_customer(contact_id: str, email: str = None, firstname: str = None, lastname: str = None, phone: str = None, company: str = None):
+def fetch_customers():
     """Fetch customers from HubSpot API."""
     url = "https://api.hubapi.com/crm/v3/objects/contacts?limit=100"
     headers = {"Authorization": f"Bearer {hubspot_token}"}
