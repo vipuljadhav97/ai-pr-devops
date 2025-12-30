@@ -155,6 +155,10 @@ def view_customer_dialog(customer):
         st.text_input("Last Name", value=customer['Last Name'], disabled=True)
         st.text_input("Phone", value=customer['Phone'], disabled=True)
         st.text_input("Company", value=customer['Company'], disabled=True)
+    
+    if st.button("Close", use_container_width=True):
+        st.session_state.dialog_type = None
+        st.rerun()
 
 
 @st.dialog("✏️ Update Customer")
@@ -189,13 +193,15 @@ def update_customer_dialog(customer):
                 
                 if result["success"]:
                     st.success("✅ Customer updated successfully!")
+                    st.session_state.dialog_type = None
                     st.rerun()
                 else:
                     st.error(f"❌ {result['error']}")
     
     with col2:
         if st.button("❌ Cancel", use_container_width=True):
-            pass
+            st.session_state.dialog_type = None
+            st.rerun()
 
 
 @st.dialog("🗑️ Delete Customer")
@@ -285,10 +291,28 @@ with st.spinner("Fetching customers from HubSpot..."):
                 )
                 
                 if action == "View":
-                    view_customer_dialog(row)
+                    st.session_state.dialog_customer = row
+                    st.session_state.dialog_type = "view"
+                    st.rerun()
                 elif action == "Update":
-                    update_customer_dialog(row)
+                    st.session_state.dialog_customer = row
+                    st.session_state.dialog_type = "update"
+                    st.rerun()
                 elif action == "Delete":
-                    delete_customer_dialog(row)
+                    st.session_state.dialog_customer = row
+                    st.session_state.dialog_type = "delete"
+                    st.rerun()
+        
+        # Handle dialog display
+        if "dialog_type" in st.session_state and st.session_state.dialog_type:
+            customer = st.session_state.dialog_customer
+            dialog_type = st.session_state.dialog_type
+            
+            if dialog_type == "view":
+                view_customer_dialog(customer)
+            elif dialog_type == "update":
+                update_customer_dialog(customer)
+            elif dialog_type == "delete":
+                delete_customer_dialog(customer)
     else:
         st.info("No customers to display")
