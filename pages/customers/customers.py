@@ -228,7 +228,7 @@ def delete_customer_dialog(customer):
     st.markdown("### Customer Information")
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("'<center>This is centered quickly</center>', unsafe_allow_html=True{customer['ID']}")
+        st.markdown(f"**ID:** {customer['ID']}")
         st.markdown(f"**Email:** {customer['Email']}")
         st.markdown(f"**First Name:** {customer['First Name']}")
 
@@ -271,7 +271,7 @@ with st.spinner("Fetching customers from HubSpot..."):
         # Create header row
         col1, col2, col3, col4, col5 = st.columns([1, 2, 3, 2, 3])
         with col1:
-            st.markdown("**#**")
+            st.markdown("")
         with col2:
             st.markdown("**ID**")
         with col3:
