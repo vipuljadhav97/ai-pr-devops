@@ -189,13 +189,15 @@ def update_customer_dialog(customer):
                 
                 if result["success"]:
                     st.success("✅ Customer updated successfully!")
+                    st.session_state.dialog_type = None
                     st.rerun()
                 else:
                     st.error(f"❌ {result['error']}")
     
     with col2:
         if st.button("❌ Cancel", use_container_width=True):
-            pass
+            st.session_state.dialog_type = None
+            st.rerun()
 
 
 @st.dialog("🗑️ Delete Customer")
@@ -225,13 +227,15 @@ def delete_customer_dialog(customer):
                 
                 if result["success"]:
                     st.success("✅ Customer deleted successfully!")
+                    st.session_state.dialog_type = None
                     st.rerun()
                 else:
                     st.error(f"❌ {result['error']}")
     
     with col2:
         if st.button("❌ Cancel", use_container_width=True):
-            pass
+            st.session_state.dialog_type = None
+            st.rerun()
 
 
 # Fetch and display customers
@@ -279,7 +283,7 @@ with st.spinner("Fetching customers from HubSpot..."):
                 # Use a hidden selectbox approach
                 action = st.selectbox(
                     "action",
-                    ["View", "Update", "Delete"],
+                    ["---", "View", "Update", "Delete"],
                     key=f"action_{idx}_{row['ID']}",
                     label_visibility="collapsed"
                 )
