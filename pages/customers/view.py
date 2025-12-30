@@ -269,7 +269,7 @@ with st.spinner("Fetching customers from HubSpot..."):
         st.markdown("### 📊 Customer Records")
 
         # Create header row
-        col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 2, 2, 2, 2])
+        col1, col2, col3, col4, col5 = st.columns([1, 2, 3, 2, 3])
         with col1:
             st.markdown("**#**")
         with col2:
@@ -279,15 +279,13 @@ with st.spinner("Fetching customers from HubSpot..."):
         with col4:
             st.markdown("**Name**")
         with col5:
-            st.markdown("**Company**")
-        with col6:
             st.markdown("**Actions**")
 
         st.divider()
 
         # Display each customer row with action buttons
         for idx, row in df.iterrows():
-            col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 2, 2, 2, 2])
+            col1, col2, col3, col4, col5 = st.columns([1, 2, 3, 2, 3])
 
             with col1:
                 st.write(f"#{idx+1}")
@@ -298,46 +296,15 @@ with st.spinner("Fetching customers from HubSpot..."):
             with col4:
                 st.write(f"{row['First Name']} {row['Last Name']}")
             with col5:
-                st.write(row["Company"])
-            with col6:
-
-                def handle_action_change(key, row_id):
-                    # Get the value the user just selected
-                    selection = st.session_state[key]
-
-                    if selection == "View":
-                        # Trigger your logic here (e.g., save ID to open a dialog later)
-                        st.session_state["show_dialog_for"] = row_id
-                    # st.toast(f"Viewing ID: {row_id}") # Optional feedback
-
-                    elif selection == "Update":
-                        st.write(f"Update logic for {row_id}")
-
-                    # RESET: Set the selectbox value back to default immediately
-                    st.session_state[key] = "---"
-
-                # 3. Create the Selectbox
-                # We must use a unique key for the widget
-                widget_key = f"action_{idx}_{row['ID']}"
-
-                # Initialize the key in session state if it doesn't exist
-                if widget_key not in st.session_state:
-                    st.session_state[widget_key] = "---"
-                # Use a hidden selectbox approach
-                action = st.selectbox(
-                    "action",
-                    ["---", "View", "Update", "Delete"],
-                    key=widget_key,
-                    label_visibility="collapsed",
-                    on_change=handle_action_change,
-                    args=(widget_key, row["ID"]),
-                )
-
-                if action == "View":
-                    view_customer_dialog(row)
-                elif action == "Update":
-                    update_customer_dialog(row)
-                elif action == "Delete":
-                    delete_customer_dialog(row)
+                btn_col1, btn_col2, btn_col3 = st.columns(3)
+                with btn_col1:
+                    if st.button("View", key=f"view_{idx}_{row['ID']}", use_container_width=True):
+                        view_customer_dialog(row)
+                with btn_col2:
+                    if st.button("Update", key=f"update_{idx}_{row['ID']}", use_container_width=True):
+                        update_customer_dialog(row)
+                with btn_col3:
+                    if st.button("Delete", key=f"delete_{idx}_{row['ID']}", use_container_width=True):
+                        delete_customer_dialog(row)
     else:
         st.info("No customers to display")
