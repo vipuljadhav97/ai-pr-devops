@@ -6,15 +6,15 @@ from dotenv import load_dotenv
 import sys
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.db_service import (
-    check_database_status, 
+    check_database_status,
     check_hubspot_api_status,
-    init_db, 
+    init_db,
     sync_customers_to_db,
     get_db_connection,
     log_error,
-    log_hubspot_error
+    log_hubspot_error,
 )
 
 load_dotenv()  # Load variables from .env file
@@ -75,13 +75,20 @@ def fetch_customers():
         return None
 
 
-def update_customer(contact_id: str, email: str = None, firstname: str = None, lastname: str = None, phone: str = None, company: str = None):
+def update_customer(
+    contact_id: str,
+    email: str = None,
+    firstname: str = None,
+    lastname: str = None,
+    phone: str = None,
+    company: str = None,
+):
     """Update an existing customer in HubSpot."""
     url = f"https://api.hubapi.com/crm/v3/objects/contacts/{contact_id}"
-    
+
     # Build properties object - only include fields that are provided
     properties = {}
-    
+
     if email:
         properties["email"] = email
     if firstname:
@@ -92,17 +99,15 @@ def update_customer(contact_id: str, email: str = None, firstname: str = None, l
         properties["phone"] = phone
     if company:
         properties["company"] = company
-    
+
     if not properties:
         return {"success": False, "error": "No properties provided to update"}
-    
-    payload = {
-        "properties": properties
-    }
-    
+
+    payload = {"properties": properties}
+
     headers = {
         "Authorization": f"Bearer {hubspot_token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     try:
@@ -111,7 +116,10 @@ def update_customer(contact_id: str, email: str = None, firstname: str = None, l
         data = response.json()
         return {"success": True, "id": data.get("id"), "data": data}
     except requests.exceptions.HTTPError as e:
-        return {"success": False, "error": f"API Error: {response.status_code} - {response.text}"}
+        return {
+            "success": False,
+            "error": f"API Error: {response.status_code} - {response.text}",
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -119,23 +127,29 @@ def update_customer(contact_id: str, email: str = None, firstname: str = None, l
 def delete_customer(contact_id: str, email: str = None):
     """Delete a customer from HubSpot using GDPR delete."""
     url = "https://api.hubapi.com/crm/v3/objects/contacts/gdpr-delete"
-    
+
     payload = {
         "objectId": email if email else contact_id,
-        "idProperty": "email" if email else "hs_object_id"
+        "idProperty": "email" if email else "hs_object_id",
     }
-    
+
     headers = {
         "Authorization": f"Bearer {hubspot_token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     try:
         response = requests.post(url, json=payload, headers=headers)
         response.raise_for_status()
-        return {"success": True, "message": f"Customer {contact_id} deleted successfully"}
+        return {
+            "success": True,
+            "message": f"Customer {contact_id} deleted successfully",
+        }
     except requests.exceptions.HTTPError as e:
-        return {"success": False, "error": f"API Error: {response.status_code} - {response.text}"}
+        return {
+            "success": False,
+            "error": f"API Error: {response.status_code} - {response.text}",
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -144,56 +158,62 @@ def delete_customer(contact_id: str, email: str = None):
 def view_customer_dialog(customer):
     """Display customer details in a non-editable dialog."""
     st.markdown("### Customer Information")
-    
+
     col1, col2 = st.columns(2)
     with col1:
-        st.text_input("ID", value=customer['ID'], disabled=True)
-        st.text_input("Email", value=customer['Email'], disabled=True)
-        st.text_input("First Name", value=customer['First Name'], disabled=True)
-    
+        st.text_input("ID", value=customer["ID"], disabled=True)
+        st.text_input("Email", value=customer["Email"], disabled=True)
+        st.text_input("First Name", value=customer["First Name"], disabled=True)
+
     with col2:
-        st.text_input("Last Name", value=customer['Last Name'], disabled=True)
-        st.text_input("Phone", value=customer['Phone'], disabled=True)
-        st.text_input("Company", value=customer['Company'], disabled=True)
+        st.text_input("Last Name", value=customer["Last Name"], disabled=True)
+        st.text_input("Phone", value=customer["Phone"], disabled=True)
+        st.text_input("Company", value=customer["Company"], disabled=True)
 
 
 @st.dialog("✏️ Update Customer")
 def update_customer_dialog(customer):
     """Display update form in a dialog with pre-populated data."""
     st.markdown("### Update Customer Information")
-    
+
     col1, col2 = st.columns(2)
     with col1:
-        st.text_input("ID", value=customer['ID'], disabled=True)
-        new_email = st.text_input("Email", value=customer['Email'])
-        new_firstname = st.text_input("First Name", value=customer['First Name'])
-    
+        st.text_input("ID", value=customer["ID"], disabled=True)
+        new_email = st.text_input("Email", value=customer["Email"])
+        new_firstname = st.text_input("First Name", value=customer["First Name"])
+
     with col2:
         st.write("")  # Spacing
-        new_lastname = st.text_input("Last Name", value=customer['Last Name'])
-        new_phone = st.text_input("Phone", value=customer['Phone'])
-        new_company = st.text_input("Company", value=customer['Company'])
-    
+        new_lastname = st.text_input("Last Name", value=customer["Last Name"])
+        new_phone = st.text_input("Phone", value=customer["Phone"])
+        new_company = st.text_input("Company", value=customer["Company"])
+
     col1, col2 = st.columns(2)
     with col1:
         if st.button("✅ Update Customer", use_container_width=True):
             with st.spinner("Updating customer..."):
                 result = update_customer(
-                    contact_id=str(customer['ID']),
-                    email=new_email if new_email != customer['Email'] else None,
-                    firstname=new_firstname if new_firstname != customer['First Name'] else None,
-                    lastname=new_lastname if new_lastname != customer['Last Name'] else None,
-                    phone=new_phone if new_phone != customer['Phone'] else None,
-                    company=new_company if new_company != customer['Company'] else None
+                    contact_id=str(customer["ID"]),
+                    email=new_email if new_email != customer["Email"] else None,
+                    firstname=(
+                        new_firstname
+                        if new_firstname != customer["First Name"]
+                        else None
+                    ),
+                    lastname=(
+                        new_lastname if new_lastname != customer["Last Name"] else None
+                    ),
+                    phone=new_phone if new_phone != customer["Phone"] else None,
+                    company=new_company if new_company != customer["Company"] else None,
                 )
-                
+
                 if result["success"]:
                     st.success("✅ Customer updated successfully!")
                     st.session_state.dialog_type = None
                     st.rerun()
                 else:
                     st.error(f"❌ {result['error']}")
-    
+
     with col2:
         if st.button("❌ Cancel", use_container_width=True):
             st.session_state.dialog_type = None
@@ -204,34 +224,34 @@ def update_customer_dialog(customer):
 def delete_customer_dialog(customer):
     """Display delete confirmation dialog."""
     st.error(f"⚠️ Are you sure you want to permanently delete this customer?")
-    
+
     st.markdown("### Customer Information")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(f"**ID:** {customer['ID']}")
         st.markdown(f"**Email:** {customer['Email']}")
         st.markdown(f"**First Name:** {customer['First Name']}")
-    
+
     with col2:
         st.markdown(f"**Last Name:** {customer['Last Name']}")
         st.markdown(f"**Phone:** {customer['Phone']}")
         st.markdown(f"**Company:** {customer['Company']}")
-    
+
     st.warning("⚠️ This action cannot be undone!")
-    
+
     col1, col2 = st.columns(2)
     with col1:
         if st.button("✅ Confirm Delete", use_container_width=True, type="primary"):
             with st.spinner("Deleting customer..."):
-                result = delete_customer(str(customer['ID']), email=customer['Email'])
-                
+                result = delete_customer(str(customer["ID"]), email=customer["Email"])
+
                 if result["success"]:
                     st.success("✅ Customer deleted successfully!")
                     st.session_state.dialog_type = None
                     st.rerun()
                 else:
                     st.error(f"❌ {result['error']}")
-    
+
     with col2:
         if st.button("❌ Cancel", use_container_width=True):
             st.session_state.dialog_type = None
@@ -244,10 +264,10 @@ with st.spinner("Fetching customers from HubSpot..."):
     if df is not None:
         # Store in session state
         st.session_state.customers_df = df
-        
+
         # Display customers table with action buttons
         st.markdown("### 📊 Customer Records")
-        
+
         # Create header row
         col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 2, 2, 2, 2])
         with col1:
@@ -262,63 +282,62 @@ with st.spinner("Fetching customers from HubSpot..."):
             st.markdown("**Company**")
     with col6:
         st.markdown("**Actions**")
-    
+
     st.divider()
-    
+
     # Display each customer row with action buttons
     for idx, row in df.iterrows():
-            col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 2, 2, 2, 2])
-            
-            with col1:
-                st.write(f"#{idx+1}")
-            with col2:
-                st.write(row["ID"])
-            with col3:
-                st.write(row["Email"])
-            with col4:
-                st.write(f"{row['First Name']} {row['Last Name']}")
-            with col5:
-                st.write(row["Company"])
-            with col6:
-                def handle_action_change(key, row_id):
-                    # Get the value the user just selected
-                    selection = st.session_state[key]
+        col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 2, 2, 2, 2])
 
-                    if selection == "View":
+        with col1:
+            st.write(f"#{idx+1}")
+        with col2:
+            st.write(row["ID"])
+        with col3:
+            st.write(row["Email"])
+        with col4:
+            st.write(f"{row['First Name']} {row['Last Name']}")
+        with col5:
+            st.write(row["Company"])
+        with col6:
+
+            def handle_action_change(key, row_id):
+                # Get the value the user just selected
+                selection = st.session_state[key]
+
+                if selection == "View":
                     # Trigger your logic here (e.g., save ID to open a dialog later)
-                        st.session_state["show_dialog_for"] = row_id
-                    # st.toast(f"Viewing ID: {row_id}") # Optional feedback
+                    st.session_state["show_dialog_for"] = row_id
+                # st.toast(f"Viewing ID: {row_id}") # Optional feedback
 
-                    elif selection == "Update":
-                        st.write(f"Update logic for {row_id}")
+                elif selection == "Update":
+                    st.write(f"Update logic for {row_id}")
 
-                    # RESET: Set the selectbox value back to default immediately
-                    st.session_state[key] = "---"
+                # RESET: Set the selectbox value back to default immediately
+                st.session_state[key] = "---"
 
+            # 3. Create the Selectbox
+            # We must use a unique key for the widget
+            widget_key = f"action_{idx}_{row['ID']}"
 
+            # Initialize the key in session state if it doesn't exist
+            if widget_key not in st.session_state:
+                st.session_state[widget_key] = "---"
+            # Use a hidden selectbox approach
+            action = st.selectbox(
+                "action",
+                ["---", "View", "Update", "Delete"],
+                key=widget_key,
+                label_visibility="collapsed",
+                on_change=handle_action_change,
+                args=(widget_key, row["ID"]),
+            )
 
-                # 3. Create the Selectbox
-                # We must use a unique key for the widget
-                widget_key = f"action_{idx}_{row['ID']}"
-
-                # Initialize the key in session state if it doesn't exist
-                if widget_key not in st.session_state:
-                    st.session_state[widget_key] = "---"
-                # Use a hidden selectbox approach
-                action = st.selectbox(
-                    "action",
-                    ["---", "View", "Update", "Delete"],
-                    key=widget_key,
-                    label_visibility="collapsed",
-                    on_change=handle_action_change,
-                    args=(widget_key, row['ID'])
-                )
-                
-                if action == "View":
-                    view_customer_dialog(row)
-                elif action == "Update":
-                    update_customer_dialog(row)
-                elif action == "Delete":
-                    delete_customer_dialog(row)
+            if action == "View":
+                view_customer_dialog(row)
+            elif action == "Update":
+                update_customer_dialog(row)
+            elif action == "Delete":
+                delete_customer_dialog(row)
     else:
         st.info("No customers to display")
