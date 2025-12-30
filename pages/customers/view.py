@@ -189,15 +189,13 @@ def update_customer_dialog(customer):
                 
                 if result["success"]:
                     st.success("✅ Customer updated successfully!")
-                    st.session_state.dialog_type = None
                     st.rerun()
                 else:
                     st.error(f"❌ {result['error']}")
     
     with col2:
         if st.button("❌ Cancel", use_container_width=True):
-            st.session_state.dialog_type = None
-            st.rerun()
+            pass
 
 
 @st.dialog("🗑️ Delete Customer")
@@ -227,15 +225,13 @@ def delete_customer_dialog(customer):
                 
                 if result["success"]:
                     st.success("✅ Customer deleted successfully!")
-                    st.session_state.dialog_type = None
                     st.rerun()
                 else:
                     st.error(f"❌ {result['error']}")
     
     with col2:
         if st.button("❌ Cancel", use_container_width=True):
-            st.session_state.dialog_type = None
-            st.rerun()
+            pass
 
 
 # Fetch and display customers
