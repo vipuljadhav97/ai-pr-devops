@@ -271,7 +271,7 @@ with st.spinner("Fetching customers from HubSpot..."):
         # Create header row
         col1, col2, col3, col4, col5 = st.columns([1, 2, 3, 2, 3])
         with col1:
-            st.markdown("")
+            st.markdown(""<center>This is centered quickly</center>", unsafe_allow_html=True")
         with col2:
             st.markdown("**ID**")
         with col3:
