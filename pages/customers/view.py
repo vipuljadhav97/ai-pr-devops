@@ -235,8 +235,6 @@ def delete_customer_dialog(customer):
 
 
 # Fetch and display customers automatically
-st.subheader("📋 Customers List")
-
 # Check and initialize database
 db_status, db_error = check_database_status()
 
