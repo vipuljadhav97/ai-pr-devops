@@ -279,7 +279,7 @@ with st.spinner("Fetching customers from HubSpot..."):
                 # Use a hidden selectbox approach
                 action = st.selectbox(
                     "action",
-                    ["---", "View", "Update", "Delete"],
+                    ["View", "Update", "Delete"],
                     key=f"action_{idx}_{row['ID']}",
                     label_visibility="collapsed",
                     index=options.index("View")
