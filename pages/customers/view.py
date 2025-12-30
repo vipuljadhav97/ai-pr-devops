@@ -282,12 +282,11 @@ with st.spinner("Fetching customers from HubSpot..."):
                     ["View", "Update", "Delete"],
                     key=f"action_{idx}_{row['ID']}",
                     label_visibility="collapsed",
-                    index=options.index("View")
+                    on_change=("View")
                 )
                 
                 if action == "View":
                     view_customer_dialog(row)
-                    st.reset_to_default()
                 elif action == "Update":
                     update_customer_dialog(row)
                 elif action == "Delete":
