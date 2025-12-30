@@ -286,6 +286,7 @@ with st.spinner("Fetching customers from HubSpot..."):
                 
                 if action == "View":
                     view_customer_dialog(row)
+                    reset_to_default()
                 elif action == "Update":
                     update_customer_dialog(row)
                 elif action == "Delete":
