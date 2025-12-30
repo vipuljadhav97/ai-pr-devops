@@ -1,5 +1,57 @@
 requests==2.31.0
 python-dotenv==1.0.0
 
+# --- Core API ---
+fastapi
+uvicorn[standard]
+
+# --- Async & HTTP ---
+httpx
+
+# --- Database (MySQL) ---
+sqlalchemy
+alembic
+# mysqlclient          # Native MySQL driver (requires MySQL client libs)
+pymysql                # Pure-Python alternative (no system dependencies)
+
+# --- LLM Gateway ---
+litellm
+
+# --- LangChain ---
+langchain
+langchain-openai
+
+# --- Agent Framework ---
+crewai
+
+# --- Config & Validation ---
+python-dotenv
+pydantic
+pydantic-settings
+email-validator
+
+# --- Logging ---
+structlog
+
+# --- Testing ---
+pytest
+pytest-asyncio
+
+#--- Frontend ---
+streamlit
+flask
+
+mcp
+python-dotenv
+pyairtable
+hubspot-api-client
+squareup
+requests
+pandas
+streamlit
+
+streamlit_chat
+transformers
+torch
 
 
