@@ -2,12 +2,15 @@
 """
 Git Details Retriever and Auto-Commit/Push
 Retrieves git information and monitors for file changes to auto-commit and push
+Uses OpenRouter LLM to generate intelligent commit messages
 """
 
 import subprocess
 import os
 import sys
 import time
+import json
+import requests
 from datetime import datetime
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -27,6 +30,81 @@ def run_git_command(command):
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         return f"Error: {e.stderr.strip()}"
+
+
+def generate_commit_message_with_llm(changed_files, diff_content):
+    """Generate an intelligent commit message using OpenRouter LLM"""
+    
+    # Get OpenRouter API key from environment
+    api_key = os.environ.get('OPENROUTER_API_KEY')
+    
+    if not api_key:
+        print("⚠️  OPENROUTER_API_KEY not found in environment. Using default message.")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return f"Auto-commit: Updated files at {timestamp}"
+    
+    # Prepare the prompt
+    file_list = "\n".join([f"- {f}" for f in changed_files])
+    
+    # Limit diff content to avoid token limits
+    truncated_diff = diff_content[:3000] if len(diff_content) > 3000 else diff_content
+    
+    prompt = f"""You are a Git commit message expert. Generate a concise, conventional commit message based on the following changes.
+
+Changed files:
+{file_list}
+
+Diff summary:
+{truncated_diff}
+
+Requirements:
+- Use conventional commit format (e.g., feat:, fix:, docs:, refactor:, style:, test:, chore:)
+- Keep it under 72 characters
+- Be specific but concise
+- Focus on WHAT changed and WHY, not HOW
+- Use imperative mood (e.g., "Add feature" not "Added feature")
+
+Generate ONLY the commit message, nothing else."""
+
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com",
+                "X-Title": "Git Auto-Commit Tool"
+            },
+            json={
+                "model": "google/gemma-2-9b-it:free",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "max_tokens": 100,
+                "temperature": 0.7
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            commit_message = result['choices'][0]['message']['content'].strip()
+            # Remove any quotes or extra formatting
+            commit_message = commit_message.strip('"\'')
+            print(f"🤖 LLM-generated commit message: {commit_message}")
+            return commit_message
+        else:
+            print(f"⚠️  OpenRouter API error ({response.status_code}): {response.text}")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            return f"Auto-commit: Updated files at {timestamp}"
+            
+    except Exception as e:
+        print(f"⚠️  Error calling OpenRouter API: {e}")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return f"Auto-commit: Updated files at {timestamp}"
 
 
 def get_git_details():
@@ -176,20 +254,20 @@ class GitAutoCommitHandler(FileSystemEventHandler):
             print("\n📦 Staging changes...")
             run_git_command("git add .")
             
-            # Generate commit message
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
             # Get list of changed files
             changed_files = run_git_command("git diff --cached --name-only")
             file_list = changed_files.split('\n') if changed_files else []
             
-            if len(file_list) == 1:
-                commit_msg = f"Auto-commit: Updated {file_list[0]} at {timestamp}"
-            else:
-                commit_msg = f"Auto-commit: Updated {len(file_list)} files at {timestamp}"
+            # Get diff for context
+            diff_content = run_git_command("git diff --cached --stat")
+            full_diff = run_git_command("git diff --cached")
+            
+            # Use LLM to generate commit message
+            print("\n🤖 Generating intelligent commit message...")
+            commit_msg = generate_commit_message_with_llm(file_list, full_diff)
             
             # Commit
-            print(f"💾 Committing: {commit_msg}")
+            print(f"\n💾 Committing: {commit_msg}")
             commit_result = run_git_command(f'git commit -m "{commit_msg}"')
             print(commit_result)
             
