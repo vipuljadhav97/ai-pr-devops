@@ -263,13 +263,13 @@ with st.spinner("Fetching customers from HubSpot..."):
         with col6:
             st.markdown("**Actions**")
         
-        st.divider()
+    st.divider()
 
-        def handle_action_change(key, row_id):
-    # Get the value the user just selected
-    selection = st.session_state[key]
+    def handle_action_change(key, row_id):
+        # Get the value the user just selected
+        selection = st.session_state[key]
     
-    if selection == "View":
+        if selection == "View":
         # Trigger your logic here (e.g., save ID to open a dialog later)
         st.session_state["show_dialog_for"] = row_id
         # st.toast(f"Viewing ID: {row_id}") # Optional feedback
