@@ -51,7 +51,7 @@ pandas
 streamlit
 
 streamlit_chat
-transformers
-torch
+# transformers
+# torch
 
 
