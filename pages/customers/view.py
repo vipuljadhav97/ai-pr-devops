@@ -280,9 +280,7 @@ with st.spinner("Fetching customers from HubSpot..."):
         # RESET: Set the selectbox value back to default immediately
         st.session_state[key] = "---"
 
-# 2. Example Data
-    row = {'ID': 101, 'Name': 'Alice'}
-    idx = 0
+
 
 # 3. Create the Selectbox
 # We must use a unique key for the widget
