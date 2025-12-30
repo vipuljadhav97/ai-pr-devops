@@ -234,44 +234,12 @@ def delete_customer_dialog(customer):
             pass
 
 
-# Fetch and display customers automatically
-# Check and initialize database
-db_status, db_error = check_database_status()
-
-if not db_status:
-    if db_error:
-        st.warning(f"⚠️ Database Status: {db_error}")
-        st.info("Attempting to initialize database...")
-        success, init_error = init_db()
-        if not success and init_error:
-            st.error(f"Database initialization failed: {init_error}")
-    else:
-        st.error("Database is not available")
-
+# Fetch and display customers
 with st.spinner("Fetching customers from HubSpot..."):
     df = fetch_customers()
     if df is not None:
-        # Sync to database
-        if db_status:
-            with st.spinner("Syncing to database..."):
-                sync_result = sync_customers_to_db(df)
-                if sync_result["errors"] > 0:
-                    st.warning(f"⚠️ {sync_result['errors']} sync errors occurred. Check logs for details.")
-                if sync_result["new"] > 0 or sync_result["skipped"] > 0 or sync_result["deleted"] > 0:
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        st.metric("🆕 New Records", sync_result["new"])
-                    with col2:
-                        st.metric("⏭️ Skipped (Duplicates)", sync_result["skipped"])
-                    with col3:
-                        st.metric("🗑️ Deleted", sync_result["deleted"])
-                    with col4:
-                        st.metric("❌ Errors", sync_result["errors"])
-        
         # Store in session state
         st.session_state.customers_df = df
-        
-        st.divider()
         
         # Display customers table with action buttons
         st.markdown("### 📊 Customer Records")
